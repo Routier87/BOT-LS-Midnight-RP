@@ -1,16 +1,18 @@
+const { SlashCommandBuilder } = require('discord.js');
+
 module.exports = {
-    name: 'accepter',
-    description: 'Accepter le règlement et recevoir le rôle Citoyen RP',
-    async execute(message, args, client) {
-        const role = message.guild.roles.cache.get(require('../config.json').roleCitoyen);
-        if (!role) return message.channel.send('❌ Rôle introuvable !');
+    data: new SlashCommandBuilder()
+        .setName("accepter")
+        .setDescription("Accepter le règlement et recevoir le rôle Citoyen RP"),
 
-        if (message.member.roles.cache.has(role.id)) {
-            return message.channel.send('✅ Tu as déjà accepté le règlement.');
-        }
+    async execute(interaction, client, config) {
+        const role = interaction.guild.roles.cache.get(config.roleCitoyen);
+        if (!role) return interaction.reply({ content: '❌ Rôle introuvable !', ephemeral: true });
 
-        await message.member.roles.add(role, 'Règlement accepté');
-        await message.channel.send(`🎉 ${message.member}, tu as accepté le règlement ! Bon RP 🚓🚑`);
-        try { await message.delete(); } catch {}
+        if (interaction.member.roles.cache.has(role.id))
+            return interaction.reply({ content: '✅ Tu as déjà accepté le règlement.', ephemeral: true });
+
+        await interaction.member.roles.add(role, 'Règlement accepté');
+        await interaction.reply({ content: `🎉 ${interaction.user}, tu as accepté le règlement ! Bon RP 🚓🚑`, ephemeral: false });
     }
-}
+};

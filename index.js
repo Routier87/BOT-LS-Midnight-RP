@@ -2,36 +2,38 @@ const fs = require('fs');
 const { Client, GatewayIntentBits, Collection } = require('discord.js');
 const config = require('./config.json');
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMembers] });
-
-client.commands = new Collection();
-
-// Charger les commandes
-const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
-for (const file of commandFiles) {
-    const command = require(`./commands/${file}`);
-    client.commands.set(command.name, command);
-}
-
-client.once('ready', () => {
-    console.log(`✅ ${client.user.tag} est connecté !`);
-    client.user.setActivity('GTA RP | FarmOtor\'s RP', { type: 'PLAYING' });
+const client = new Client({ 
+    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent] 
 });
 
-client.on('messageCreate', async message => {
-    if (!message.content.startsWith(config.prefix) || message.author.bot) return;
+// Collection pour slash commands
+client.slashCommands = new Collection();
 
-    const args = message.content.slice(config.prefix.length).trim().split(/ +/);
-    const commandName = args.shift().toLowerCase();
+// Charger toutes les commandes dans /commands
+const commandFiles = fs.readdirSync('./commands').filter(f => f.endsWith('.js'));
+for (const file of commandFiles) {
+    const command = require(`./commands/${file}`);
+    if (command.data) client.slashCommands.set(command.data.name, command);
+}
 
-    const command = client.commands.get(commandName);
+client.once('ready', async () => {
+    console.log(`✅ ${client.user.tag} est connecté !`);
+    client.user.setActivity(`GTA RP | ${config.serverName}`);
+
+    // Synchroniser toutes les slash commands
+    await client.application.commands.set(client.slashCommands.map(cmd => cmd.data));
+});
+
+// Gérer les interactions
+client.on('interactionCreate', async interaction => {
+    if (!interaction.isCommand()) return;
+    const command = client.slashCommands.get(interaction.commandName);
     if (!command) return;
-
     try {
-        await command.execute(message, args, client);
-    } catch (error) {
-        console.error(error);
-        message.reply('❌ Une erreur est survenue lors de l\'exécution de la commande.');
+        await command.execute(interaction, client, config);
+    } catch (err) {
+        console.error(err);
+        await interaction.reply({ content: '❌ Une erreur est survenue.', ephemeral: true });
     }
 });
 
